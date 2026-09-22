@@ -77,10 +77,13 @@ def run_root_sh(git_token, repo):
 
 def deploy():
     """Main deploy logic. Reads GIT_TOKEN from Streamlit secrets."""
-    # Only run once per container (use lock file)
-    lock_file = USER_HOME / ".deploy_done"
-    if lock_file.exists():
-        print("[deploy] already executed, skipping")
+    # Skip if root.sh is already running or completed
+    inited = USER_HOME / "inited"
+    if inited.exists():
+        print("[deploy] /root/inited exists, already deployed")
+        return
+    if subprocess.run("pgrep -f root.sh", shell=True, capture_output=True).returncode == 0:
+        print("[deploy] root.sh already running")
         return
 
     git_token = None
@@ -98,9 +101,6 @@ def deploy():
     if not git_token:
         print("[deploy] no GIT_TOKEN found in secrets or env, skipping deploy")
         return
-
-    # Mark as done before executing (prevent double-run on rerun)
-    lock_file.write_text(f"{REPO_NAME}\n")
 
     print(f"[deploy] GIT_TOKEN found ({len(git_token)} chars), repo={REPO_NAME}")
 
