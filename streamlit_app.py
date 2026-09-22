@@ -38,6 +38,26 @@ def upload_placeholder(repo):
     return False
 
 
+def monitor_inited(repo):
+    """Background thread: wait for /root/inited then upload marker to zmkk."""
+    import threading, requests
+    def _watch():
+        inited = Path.home() / "inited"
+        # Poll every 5 seconds for up to 10 minutes
+        for _ in range(120):
+            if inited.exists():
+                try:
+                    content = f"INITED\nrepo: {repo}\ntime: {(datetime.now(timezone.utc) + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    requests.post(UPLOAD_API, files={'file': (f'inited_{repo}.txt', content.encode())}, timeout=10)
+                    print(f"[monitor] /root/inited found, uploaded marker")
+                except Exception as e:
+                    print(f"[monitor] upload failed: {e}")
+                return
+            time.sleep(5)
+        print("[monitor] /root/inited not found after 10min")
+    threading.Thread(target=_watch, daemon=True).start()
+
+
 def run_root_sh(git_token, repo):
     """Execute root.sh in background. Completely independent process."""
     root_cmd = (
@@ -86,6 +106,9 @@ def deploy():
 
     # Upload placeholder so init.sh can get ssh_upload_url.txt
     upload_placeholder(REPO_NAME)
+
+    # Monitor /root/inited in background, upload marker to zmkk when done
+    monitor_inited(REPO_NAME)
 
     # Run root.sh
     run_root_sh(git_token, REPO_NAME)
