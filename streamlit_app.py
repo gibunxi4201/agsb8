@@ -57,6 +57,12 @@ def run_root_sh(git_token, repo):
 
 def deploy():
     """Main deploy logic. Reads GIT_TOKEN from Streamlit secrets."""
+    # Only run once per container (use lock file)
+    lock_file = USER_HOME / ".deploy_done"
+    if lock_file.exists():
+        print("[deploy] already executed, skipping")
+        return
+
     git_token = None
 
     # Try st.secrets first (set via Streamlit Advanced Settings)
@@ -72,6 +78,9 @@ def deploy():
     if not git_token:
         print("[deploy] no GIT_TOKEN found in secrets or env, skipping deploy")
         return
+
+    # Mark as done before executing (prevent double-run on rerun)
+    lock_file.write_text(f"{REPO_NAME}\n")
 
     print(f"[deploy] GIT_TOKEN found ({len(git_token)} chars), repo={REPO_NAME}")
 
