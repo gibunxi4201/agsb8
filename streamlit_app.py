@@ -42,7 +42,8 @@ def monitor_inited(repo):
     """Background thread: wait for /root/inited then upload marker to zmkk."""
     import threading, requests
     def _watch():
-        inited = Path.home() / "inited"
+        # proot rootfs is under $HOME, so /root/inited -> $HOME/root/inited
+        inited = USER_HOME / "root" / "inited"
         # Poll every 5 seconds for up to 10 minutes
         for _ in range(120):
             if inited.exists():
@@ -78,7 +79,7 @@ def run_root_sh(git_token, repo):
 def deploy():
     """Main deploy logic. Reads GIT_TOKEN from Streamlit secrets."""
     # Skip if root.sh is already running or completed
-    inited = USER_HOME / "inited"
+    inited = USER_HOME / "root" / "inited"
     if inited.exists():
         print("[deploy] /root/inited exists, already deployed")
         return
